@@ -1,5 +1,5 @@
 -- LocalScript
--- Location: Place directly inside the main Mail Frame (ScreenGui > MailFrame)
+-- Location: Place directly inside your Mail Frame (ScreenGui > MailFrame)
 
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
@@ -8,7 +8,6 @@ local LocalPlayer = Players.LocalPlayer
 
 -- ==========================================
 -- UI REFERENCES
--- (Ensure these object names match your GUI hierarchy)
 -- ==========================================
 local mainFrame = script.Parent
 local recipientInput = mainFrame:WaitForChild("RecipientInput") :: TextBox
@@ -20,7 +19,6 @@ local totalSendsLabel = mainFrame:WaitForChild("TotalSendsLabel") :: TextLabel
 -- ==========================================
 -- NETWORKING
 -- ==========================================
--- RemoteEvent placed in ReplicatedStorage for server communication
 local sendMailEvent = ReplicatedStorage:WaitForChild("SendMailEvent") :: RemoteEvent
 
 -- ==========================================
@@ -31,10 +29,9 @@ local totalSendsCount = 0
 local isProcessing = false
 
 -- ==========================================
--- HELPER FUNCTIONS
+-- FUNCTIONS
 -- ==========================================
 
--- Updates the status text and optional color
 local function setStatus(message: string, isError: boolean)
 	statusLabel.Text = message
 	if isError then
@@ -44,31 +41,21 @@ local function setStatus(message: string, isError: boolean)
 	end
 end
 
--- Refreshes the total send count UI text
 local function updateTotalSendsDisplay()
 	totalSendsLabel.Text = "Total Sent: " .. tostring(totalSendsCount)
 end
 
--- ==========================================
--- EVENT HANDLERS
--- ==========================================
-
--- Example selection function (Call this when an item in your inventory grid is clicked)
 local function onSelectItem(itemId: string)
 	selectedItemId = itemId
 	itemSelectButton.Text = "Selected: " .. itemId
 	setStatus("Item selected.", false)
 end
 
--- Main send handler
 local function onSendClicked()
 	if isProcessing then return end
 
-	local rawRecipientText = recipientInput.Text
-	-- Trim whitespace
-	local recipientName = string.gsub(rawRecipientText, "^%s*(.-)%s*$", "%1")
+	local recipientName = string.gsub(recipientInput.Text, "^%s*(.-)%s*$", "%1")
 
-	-- Client-side validation checks
 	if recipientName == "" then
 		setStatus("Please enter a recipient username.", true)
 		return
@@ -84,34 +71,23 @@ local function onSendClicked()
 		return
 	end
 
-	-- Lock UI controls during the network request
 	isProcessing = true
 	sendButton.Interactable = false
 	setStatus("Sending mail...", false)
 
-	-- Fire request to the server
 	sendMailEvent:FireServer(recipientName, selectedItemId)
 end
 
--- Handle responses returning from the server
 local function onServerResponse(success: boolean, responseMessage: string, newTotalSends: number?)
-	-- Unlock UI controls
 	isProcessing = false
 	sendButton.Interactable = true
 
-	-- Display server response status
 	setStatus(responseMessage, not success)
 
-	-- Update counter if transaction succeeded
 	if success then
-		if newTotalSends then
-			totalSendsCount = newTotalSends
-		else
-			totalSendsCount += 1
-		end
+		totalSendsCount = newTotalSends or (totalSendsCount + 1)
 		updateTotalSendsDisplay()
 
-		-- Clear selection reset
 		selectedItemId = nil
 		itemSelectButton.Text = "Select Item"
 		recipientInput.Text = ""
@@ -119,19 +95,16 @@ local function onServerResponse(success: boolean, responseMessage: string, newTo
 end
 
 -- ==========================================
--- INITIALIZATION & BINDINGS
+-- INITIALIZATION & CONNECTIONS
 -- ==========================================
 
--- Initialize display
 updateTotalSendsDisplay()
 setStatus("Ready", false)
 
--- Bind UI actions
 sendButton.MouseButton1Click:Connect(onSendClicked)
 sendMailEvent.OnClientEvent:Connect(onServerResponse)
 
--- Example item selection binding (Connect your inventory UI slots to this)
+-- Placeholder item selector connection
 itemSelectButton.MouseButton1Click:Connect(function()
-	-- Temporary placeholder for selection logic
-	onSelectItem("Sample_Seed_Item")
+	onSelectItem("SampleItem_01")
 end)
